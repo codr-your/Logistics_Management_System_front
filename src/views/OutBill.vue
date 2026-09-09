@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="out-bill-page">
     <h2 style="margin-bottom:16px;">出库单据</h2>
     <div class="card-row-2">
       <div class="stat-card">
@@ -17,7 +17,7 @@
         <div class="toolbar">
           <el-input v-model="searchBillNo" placeholder="单据编号" style="width:220px;"></el-input>
           <el-button type="primary" size="small" @click="queryBill">查询</el-button>
-          <el-button type="success" size="small">新建出库单</el-button>
+          <el-button type="success" size="small" @click="openAddDialog">新建出库单</el-button>
         </div>
         <table width="100%" style="border-collapse:collapse;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
           <thead>
@@ -38,7 +38,9 @@
             <td style="padding:12px 16px;border-bottom:1px solid #eee;">{{bill.operatorName}}</td>
             <td style="padding:12px 16px;border-bottom:1px solid #eee;">{{bill.status===0?'草稿':'已提交'}}</td>
             <td style="padding:12px 16px;border-bottom:1px solid #eee;">
-              <el-button size="mini" type="text">查看明细</el-button>
+              <el-button size="mini" type="text" @click="openDetail(bill.id)">查看明细</el-button>
+  <!-- 只有草稿status=0才显示提交按钮 -->
+              <el-button v-if="bill.status === 0" size="mini" type="success" @click="submitDraftBill(bill)">提交单据</el-button>
             </td>
           </tr>
           </tbody>
@@ -54,12 +56,100 @@
         </div>
       </div>
     </div>
+
+    <!-- 新建出库单弹窗 -->
+    <el-dialog title="新建出库单" :visible.sync="addOutBillVisible" width="70%">
+      <el-form :model="outBillForm" label-width="100px">
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="单据编号">
+              <el-input v-model="outBillForm.billNo"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="备注">
+              <el-input v-model="outBillForm.remark"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="物料明细">
+          <el-table :data="outBillForm.itemList" border style="width:100%">
+            <el-table-column label="物料选择">
+              <template slot-scope="scope">
+                <el-select v-model="scope.row.materialId" placeholder="请选择物料" @change="handleMaterialChange(scope.row)">
+                  <el-option v-for="mat in materialList" :key="mat.id" :label="mat.materialName" :value="mat.id" />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="物料名称" prop="materialName"></el-table-column>
+            <el-table-column label="单位" prop="unit"></el-table-column>
+            <el-table-column label="出库数量">
+              <template slot-scope="scope">
+                <el-input-number v-model="scope.row.operateNum" :min="1"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作">
+              <template slot-scope="scope">
+                <el-button type="text" danger @click="removeItem(scope.$index)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-button size="small" style="margin-top:10px" @click="addItem">新增一行</el-button>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="addOutBillVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveDraft">保存草稿</el-button>
+        <el-button type="success" @click="handleSubmitBill">提交单据</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 查看明细弹窗【只读】 -->
+    <el-dialog title="单据详情" :visible.sync="detailDialogVisible" width="70%">
+      <el-form :model="detailForm" label-width="100px">
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="单据编号">
+              <el-input v-model="detailForm.billNo" disabled></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="单据状态">
+              <el-input :value="detailForm.status===0?'草稿':'已提交'" disabled></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="出库时间">
+              <el-input v-model="detailForm.billTime" disabled></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="备注">
+              <el-input v-model="detailForm.remark" disabled></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="明细列表">
+          <el-table :data="detailForm.itemList" border style="width:100%">
+            <el-table-column label="物料ID" prop="materialId"></el-table-column>
+            <el-table-column label="出库数量" prop="operateNum"></el-table-column>
+          </el-table>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script>
 import * as echarts from 'echarts'
 // 导入出库api
 import { getOutBillList, getOutMonthStat, getOutPieData, getPendingOutCount } from '@/api/outBill'
+import * as outBillApi from '@/api/outBill'
+import { getMaterialList } from '@/api/material'
 
 export default {
   name:"OutBill",
@@ -70,7 +160,26 @@ export default {
       monthOutTotal:0,
       outBillList:[],
       pieChart:null,
-      pendingCount:0
+      pendingCount:0,
+      // =========修复：补充弹窗显示变量=========
+      addOutBillVisible:false,
+      detailDialogVisible:false,
+
+      materialList:[],
+      outBillForm:{
+        billNo:"",
+        billType:"2",
+        operatorId: null,
+        remark:"",
+        itemList:[]
+      },
+      detailForm:{
+        billNo:"",
+        billTime:"",
+        status:null,
+        remark:"",
+        itemList:[]
+      }
     }
   },
   mounted() {
@@ -130,6 +239,111 @@ export default {
       window.addEventListener("resize",()=>{
         this.pieChart.resize()
       })
+    }, // =========修复！这里补上逗号=========
+
+
+    
+
+    //打开新建弹窗
+    async openAddDialog(){
+      this.addOutBillVisible = true
+      //生成出库单号 CK+时间
+      const d = new Date()
+      const y = d.getFullYear()
+      const m = String(d.getMonth()+1).padStart(2,'0')
+      const day = String(d.getDate()).padStart(2,'0')
+      const h = String(d.getHours()).padStart(2,'0')
+      const mi = String(d.getMinutes()).padStart(2,'0')
+      this.outBillForm.billNo = `CK${y}${m}${day}${h}${mi}`
+      this.outBillForm.remark = ""
+      this.outBillForm.itemList = []
+
+      //获取登录用户id，项目没有vuex用户，从localStorage读取，兜底写死1调试
+      let loginUserId = null
+      let userStr = localStorage.getItem("user")
+      if (userStr) {
+        try {
+          const userObj = JSON.parse(userStr)
+          loginUserId = userObj.id
+          console.log("✅localStorage获取登录用户id = ", loginUserId)
+        } catch (err) {
+          console.error("解析本地用户对象异常", err)
+        }
+      }
+      if (!loginUserId) {
+        loginUserId = 1
+        console.warn("⚠未读取到登录用户，临时使用 operatorId=1")
+      }
+      this.outBillForm.operatorId = loginUserId
+
+      //加载物料下拉
+      const matRes = await getMaterialList({})
+      if(matRes.code ===200){
+        this.materialList = matRes.data
+      }
+    },
+
+    addItem(){
+      this.outBillForm.itemList.push({
+        materialId:null,
+        materialName:"",
+        unit:"",
+        operateNum:1
+      })
+    },
+
+    removeItem(index){
+      this.outBillForm.itemList.splice(index,1)
+    },
+
+    handleMaterialChange(row){
+      const mat = this.materialList.find(x=>x.id === row.materialId)
+      if(mat){
+        row.materialName = mat.materialName
+        row.unit = mat.unit
+      }
+    },
+
+    //保存草稿
+    async handleSaveDraft(){
+      if(this.outBillForm.itemList.length === 0){
+        this.$message.warning("请添加至少一条物料明细")
+        return
+      }
+      const res = await outBillApi.saveOutBillDraft(this.outBillForm)
+      if(res.code === 200){
+        this.$message.success("草稿保存成功")
+        this.addOutBillVisible = false
+        this.queryBill()
+      }
+    },
+
+    //提交正式出库单据
+    async handleSubmitBill(){
+      if(this.outBillForm.itemList.length === 0){
+        this.$message.warning("请添加至少一条物料明细")
+        return
+      }
+      const res = await outBillApi.submitOutBill(this.outBillForm)
+      if(res.code === 200){
+        this.$message.success("单据提交成功")
+        this.addOutBillVisible = false
+        this.queryBill()
+      }
+    },
+
+    //打开查看明细弹窗
+    async openDetail(billId){
+      const res = await outBillApi.getBillDetail(billId)
+      if(res.code === 200){
+        const vo = res.data
+        this.detailForm.billNo = vo.billNo
+        this.detailForm.billTime = vo.billTime
+        this.detailForm.status = vo.status
+        this.detailForm.remark = vo.remark
+        this.detailForm.itemList = vo.itemList || []
+        this.detailDialogVisible = true
+      }
     }
   }
 }

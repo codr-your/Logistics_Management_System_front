@@ -40,4 +40,50 @@ export function getPendingOutCount() {
         url: '/materialBill/outBill/pendingCount',
         method: 'get'
     })
+
 }
+
+
+
+
+/**
+ * 保存出库草稿
+ */
+export function saveOutBillDraft(data) {
+    return request({
+        url: '/materialBill/saveDraft',
+        method: 'post',
+        data
+    })
+}
+
+/**
+ * 提交出库正式单据
+ */
+export function submitOutBill(data) {
+    return request({
+        url: '/materialBill/submit',
+        method: 'post',
+        data
+    })
+}
+
+/**
+ * 根据id获取单据详情（用于查看明细）
+ */
+export function getBillDetail(id) {
+    return request({
+        url: `/materialBill/detail/${id}`,
+        method: 'get'
+    })
+}
+
+
+// 根据草稿id，直接提交草稿出库单
+export function submitDraftToBill(billId) {
+    return request({
+        url: `/materialBill/outBill/submitDraft/${billId}`,
+        method: 'post'
+    })
+}
+
