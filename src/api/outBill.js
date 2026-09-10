@@ -87,3 +87,29 @@ export function submitDraftToBill(billId) {
     })
 }
 
+
+
+//出库草稿提交转正
+export function submitDraftBill(billId) {
+    return request({
+        url: '/materialBill/submitDraft',
+        method: 'post',
+        params: {
+            billId
+        }
+    })
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

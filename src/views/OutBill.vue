@@ -40,7 +40,7 @@
             <td style="padding:12px 16px;border-bottom:1px solid #eee;">
               <el-button size="mini" type="text" @click="openDetail(bill.id)">查看明细</el-button>
   <!-- 只有草稿status=0才显示提交按钮 -->
-              <el-button v-if="bill.status === 0" size="mini" type="success" @click="submitDraftBill(bill)">提交单据</el-button>
+              <el-button v-if="bill.status === 0" size="mini" type="success" @click="handleSubmitDraft(bill)">提交单据</el-button>
             </td>
           </tr>
           </tbody>
@@ -147,7 +147,7 @@
 <script>
 import * as echarts from 'echarts'
 // 导入出库api
-import { getOutBillList, getOutMonthStat, getOutPieData, getPendingOutCount } from '@/api/outBill'
+import { getOutBillList, getOutMonthStat, getOutPieData, getPendingOutCount, submitDraftBill } from '@/api/outBill'
 import * as outBillApi from '@/api/outBill'
 import { getMaterialList } from '@/api/material'
 
@@ -239,10 +239,8 @@ export default {
       window.addEventListener("resize",()=>{
         this.pieChart.resize()
       })
-    }, // =========修复！这里补上逗号=========
+    },
 
-
-    
 
     //打开新建弹窗
     async openAddDialog(){
@@ -344,7 +342,34 @@ export default {
         this.detailForm.itemList = vo.itemList || []
         this.detailDialogVisible = true
       }
+    },
+
+    //草稿单据提交转正
+    //草稿单据提交转正
+async handleSubmitDraft(bill){
+  this.$confirm('确认提交该出库草稿？提交后扣减库存，操作不可撤销','提示',{
+    confirmButtonText:'确认提交',
+    cancelButtonText:'取消',
+    type:'warning'
+  }).then(async ()=>{
+    try{
+      const res = await submitDraftBill(bill.id)
+      if(res.code === 200){
+        this.$message.success("单据提交成功")
+        this.queryBill()       //刷新单据列表
+        this.loadPendingCount()//刷新待提交草稿数量（仪表盘）
+      }
+    }catch(err){
+      // 兼容两种返回格式
+      let errMsg = "接口异常"
+      if(err && err.msg) errMsg = err.msg
+      else if(err && err.response && err.response.data && err.response.data.msg) errMsg = err.response.data.msg
+      this.$message.error("提交失败："+errMsg)
     }
+  }).catch(()=>{
+    this.$message.info("已取消提交")
+  })
+}
   }
 }
 </script>
