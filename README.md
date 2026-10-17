@@ -1,24 +1,58 @@
-# warehouse-front
+# 物料出入库物流管理系统 - 前端
+> 基于 Vue2 + Element UI 开发的物料物流管理平台前端页面，搭配 SpringBoot 后端，实现物料库存、出入库单据、库存流水统计等管理功能。
 
-## Project setup
-```
+## 项目简介
+本系统面向企业物料仓储管理场景，实现物料基础信息维护、入库/出库单据提交、库存流水记录、库存数据可视化统计。前端负责页面渲染、表单交互、接口请求、图表展示，和后端RESTful接口完成数据交互。
+
+## 技术栈
+- 框架：Vue2
+- UI组件库：Element UI
+- 网络请求：Axios
+- 路由：Vue Router
+- 状态管理：Vuex
+- 图表：ECharts
+- 构建工具：Vue CLI
+
+## 功能模块
+1. 用户模块：登录认证，权限控制
+2. 物料管理：物料新增、编辑、删除、列表查询、编码校验
+3. 出入库单据：创建入库/出库单据，提交单据后禁止修改删除
+4. 库存流水页面：库存变动流水列表，支持筛选查询
+5. 数据统计看板：库存指标卡片、近7天库存趋势图表、流水汇总报表
+6. 侧边菜单路由：动态侧边栏，页面路由管理
+
+## 环境准备
+```bash
+# 安装依赖
 npm install
-```
 
-### Compiles and hot-reloads for development
-```
+# 本地开发运行
 npm run serve
-```
 
-### Compiles and minifies for production
-```
+# 打包构建（部署）
 npm run build
+
 ```
 
-### Lints and fixes files
-```
-npm run lint
+## 项目结构
+```bash
+src
+├── api          # 后端接口请求封装
+├── assets       # 静态资源
+├── components   # 公共组件
+├── router       # 路由配置
+├── store        # Vuex状态管理
+├── views        # 页面视图（物料、单据、库存流水、统计看板）
+├── App.vue
+└── main.js
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+## 后端对接
+后端项目仓库：Logistics_Management_System_backend
+本地后端地址：http://localhost:8081
+前端代理已在 config.js 配置，开发环境自动转发接口请求
+
+## 注意事项
+本地运行前，需要先启动后端 SpringBoot 项目并启动 MySQL 数据库
+登录账号由后端数据库初始化
+打包后可部署到 Nginx 静态服务器
